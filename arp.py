@@ -8,12 +8,24 @@ def get_arp_targets():
     ip_pattern = r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
     ips = re.findall(ip_pattern, arp_output)
     
-    unique_ips = list(set([ip for ip in ips if not ip.endswith('.255')]))
+    unique_ips = []
+    for ip in set(ips):
+        octets = [int(o) for o in ip.split('.')]
+        
+        if octets[3] == 255:
+            continue
+        if 224 <= octets[0] <= 239:
+            continue
+        if ip in ["255.255.255.255", "0.0.0.0"]:
+            continue
+            
+        unique_ips.append(ip)
+        
     return unique_ips
 
 def check_ping(ip):
-    response = subprocess.run(['ping', '-n', '1', '-w', '200', ip], stdout=subprocess.PIPE)
-    return response.returncode == 0
+    process = subprocess.run(['ping', '-n', '1', '-w', '200', ip], capture_output=True, text=True)
+    return "TTL=" in process.stdout
 
 def check_port(ip, port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -36,4 +48,5 @@ if __name__ == "__main__":
                     print(f"    [+] Порт {port} ОТКРЫТ")
         else:
             print(f"[-] Узел {ip} не отвечает")
-input("Press enter to pay respect!")
+
+input("\nPress enter to pay respect!")
